@@ -1,0 +1,17 @@
+# Analyse / visualisation (Part 1)
+numpy
+matplotlib
+
+# Images & augmentation (Part 2)
+opencv-python
+Pillow
+
+# Transformations feuilles (Part 3)
+plantcv
+
+# Classification (Part 4)
+scikit-learn
+tensorflow
+
+# Norme 42 Python
+flake8
