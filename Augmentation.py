@@ -8,7 +8,7 @@ import cv2
 
 PICTURE_EXTENSIONS = {
     ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff",
-	".JPG", ".JPEG", ".PNG", ".BMP", ".TIF", ".TIFF"
+    ".JPG", ".JPEG", ".PNG", ".BMP", ".TIF", ".TIFF",
 }
 
 ###########################################################
@@ -19,13 +19,20 @@ def rotate_image(image: np.ndarray) -> np.ndarray:
     h, w = image.shape[:2]
     center = (w // 2, h // 2)
     matrix = cv2.getRotationMatrix2D(center, -45, 1)
-    return cv2.warpAffine(image, matrix, (w, h), borderMode=cv2.BORDER_REFLECT, borderValue=(255, 255, 255))
+    return cv2.warpAffine(
+        image, matrix, (w, h),
+        borderMode=cv2.BORDER_REFLECT,
+        borderValue=(255, 255, 255),
+    )
+
 
 def blur_image(image: np.ndarray) -> np.ndarray:
     return cv2.GaussianBlur(image, (15, 15), 0)
 
+
 def contrast_image(image: np.ndarray) -> np.ndarray:
     return cv2.convertScaleAbs(image, alpha=1.5)
+
 
 def scaling_image(image: np.ndarray) -> np.ndarray:
     h, w = image.shape[:2]
@@ -37,21 +44,21 @@ def scaling_image(image: np.ndarray) -> np.ndarray:
     x = (new_w - w) // 2
     return enlarged[y:y + h, x:x + w]
 
+
 def illumination_image(image: np.ndarray) -> np.ndarray:
     return cv2.convertScaleAbs(image, beta=60)
+
 
 def projective_image(image: np.ndarray) -> np.ndarray:
     """Déforme l'image avec une perspective (effet 'vu de biais')."""
     h, w = image.shape[:2]
 
-    # 4 coins de l'image d'origine
     src = np.float32([
         [0, 0],
         [w - 1, 0],
         [w - 1, h - 1],
         [0, h - 1],
     ])
-    # 4 coins déplacés
     dst = np.float32([
         [w * 0.15, h * 0.1],
         [w * 0.85, h * 0.05],
@@ -60,7 +67,10 @@ def projective_image(image: np.ndarray) -> np.ndarray:
     ])
 
     matrix = cv2.getPerspectiveTransform(src, dst)
-    return cv2.warpPerspective(image, matrix, (w, h), borderValue=(255, 255, 255))
+    return cv2.warpPerspective(
+        image, matrix, (w, h), borderValue=(255, 255, 255),
+    )
+
 
 ###########################################################
 #########              FUNCTIONS                  #########
@@ -79,6 +89,16 @@ def show_images(images: list[tuple[str, np.ndarray]]) -> None:
 
     plt.tight_layout()
     plt.show()
+
+
+def save_images(images: list[tuple[str, np.ndarray]], picture_path: Path) -> None:
+    for title, img in images:
+        if title == "Original":
+            continue
+        save_path = picture_path.parent / f"{picture_path.stem}_{title}{picture_path.suffix}"
+        Image.fromarray(img).save(save_path)
+        print(f"Saved {save_path}")
+
 
 ###########################################################
 #########                 MAIN                   #########
@@ -106,6 +126,7 @@ def main() -> None:
         ("Projective", projective_image(original)),
     ]
     show_images(images)
+    save_images(images, picture_path)
 
 
 if __name__ == "__main__":
