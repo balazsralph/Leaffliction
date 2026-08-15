@@ -8,3 +8,8 @@ dist/
 build/
 *.zip
 augmented_directory/
+notes.md
+.ipynb_checkpoints
+DATAtests/
+test*
+work_data

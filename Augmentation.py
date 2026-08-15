@@ -5,16 +5,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import cv2
-from Distribution import count_images, collect_by_plant
+from Distribution import count_images, collect_by_plant, PICTURE_EXTENSIONS
 
-PICTURE_EXTENSIONS = {
-    ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff",
-    ".JPG", ".JPEG", ".PNG", ".BMP", ".TIF", ".TIFF",
-}
 
-###########################################################
-#########             AUGMENTATION                #########
-###########################################################
+# ###########################################################
+# #########             AUGMENTATION                #########
+# ###########################################################
+
 
 def rotate_image(image: np.ndarray) -> np.ndarray:
     h, w = image.shape[:2]
@@ -73,9 +70,9 @@ def projective_image(image: np.ndarray) -> np.ndarray:
     )
 
 
-###########################################################
-#########              FUNCTIONS                  #########
-###########################################################
+# ###########################################################
+# #########              FUNCTIONS                  #########
+# ###########################################################
 
 def show_images(images: list[tuple[str, np.ndarray]]) -> None:
     n = len(images)
@@ -91,24 +88,29 @@ def show_images(images: list[tuple[str, np.ndarray]]) -> None:
     plt.tight_layout()
     plt.show()
 
+
 def copy_images(dir, new_path):
     for file in dir.iterdir():
         shutil.copy(file, new_path)
 
 
-def save_images(images: list[tuple[str, np.ndarray]], picture_path: Path, new_path) -> None:
+def save_images(
+        images: list[tuple[str, np.ndarray]],
+        picture_path: Path,
+        new_path
+        ) -> None:
     for title, img in images:
         if title == "Original":
             continue
 
-        save_path = f"{new_path}/{picture_path.stem}_{title}{picture_path.suffix}"
-        # print(save_path)
+        filename = f"{picture_path.stem}_{title}{picture_path.suffix}"
+        save_path = new_path / filename
         Image.fromarray(img).save(save_path)
-        # print(f"Saved {save_path}")
+
 
 def process_image(file, save, new_path):
-    original = np.array(Image.open(file))
 
+    original = np.array(Image.open(file))
     images = [
         ("Original", original),
         ("Rotate", rotate_image(original)),
@@ -123,9 +125,41 @@ def process_image(file, save, new_path):
         save_images(images, file, new_path)
     else:
         show_images(images)
-###########################################################
-#########                 MAIN                   #########
-###########################################################
+
+
+def process_batch(picture_path, dst):
+    plants = collect_by_plant(picture_path)
+    print(plants[picture_path.stem])
+    maxi = int(max(plants[picture_path.stem].values()))
+
+    for dir in picture_path.iterdir():
+        new_dir = Path(dst) / picture_path.stem / dir.stem
+        new_dir.mkdir(parents=True, exist_ok=True)
+        count = 0
+        content = count_images(dir)
+        max_to_augment = int((maxi - content) / 6)
+        copy_images(dir, new_dir)
+        print("images in", dir.stem, content)
+        if content == maxi:
+            print('skipping dir')
+            continue
+        print("max images : ", maxi)
+        print("missing : ", max_to_augment)
+        for file in dir.iterdir():
+            if (file.suffix.lower() not in PICTURE_EXTENSIONS
+                    or not file.is_file()):
+                continue
+            process_image(file, True, new_dir)
+            count = count + 1
+            if count == max_to_augment:
+                break
+        print(count)
+    
+
+# ###########################################################
+# #########                 MAIN                    #########
+# ###########################################################
+
 
 def main() -> None:
     if len(sys.argv) != 2:
@@ -136,34 +170,9 @@ def main() -> None:
 
     if picture_path.is_file():
         process_image(picture_path, False, None)
-        sys.exit(1)
-
-    plants = collect_by_plant(picture_path)
-    print(plants[picture_path.stem])
-    maxi = int(max(plants[picture_path.stem].values()))
-
-    for dir in picture_path.iterdir():
-        new_dir = Path('augmented_directory/'+ picture_path.stem + '/' + dir.stem)
-        new_dir.mkdir(parents=True, exist_ok=True)
-        count = 0
-        content = count_images(dir)
-        max_to_augment = int((maxi - content) / 6)
-        copy_images(dir, new_dir)
-        print("images in",dir.stem, content)
-        if content == maxi:
-            print('skipping dir')
-            continue
-        print("max images : ", maxi)
-        print("missing : ", max_to_augment )
-        for file in dir.iterdir():
-            if file.suffix.lower() not in PICTURE_EXTENSIONS or not file.is_file():
-                continue
-            process_image(file, True, new_dir)
-            count = count + 1
-            if count == max_to_augment:
-                break
-        print(count)
-
+        sys.exit(0)
+    else :
+        process_batch(picture_path, "augmented_directory")
 
 
 if __name__ == "__main__":

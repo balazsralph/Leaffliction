@@ -5,17 +5,20 @@ import sys
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
+PICTURE_EXTENSIONS = {
+    ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff",
+    ".JPG", ".JPEG", ".PNG", ".BMP", ".TIF", ".TIFF",
+}
 
 
-###########################################################
-#########          FUNCTIONS DEFINITIONS         #########
-###########################################################
+# ##########################################################
+# #########          FUNCTIONS DEFINITIONS         #########
+# ##########################################################
 
 def count_images(directory: Path) -> int:
     total = 0
     for path in directory.iterdir():
-        if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS:
+        if path.is_file() and path.suffix.lower() in PICTURE_EXTENSIONS:
             total += 1
     return total
 
@@ -52,7 +55,13 @@ def plot_plant(plant: str, classes: dict[str, int]) -> None:
     fig, (pie, bar) = plt.subplots(1, 2, figsize=(12, 5))
     fig.suptitle(f"Distribution — {plant}")
 
-    pie.pie(values, labels=labels, colors=colors, autopct="%1.1f%%", startangle=90)
+    pie.pie(
+        values,
+        labels=labels,
+        colors=colors,
+        autopct="%1.1f%%",
+        startangle=90
+        )
     pie.set_title("Pie chart")
 
     bar.bar(labels, values, color=colors)
@@ -64,10 +73,9 @@ def plot_plant(plant: str, classes: dict[str, int]) -> None:
     plt.show()
 
 
-
-###########################################################
-#########                 MAIN                   #########
-###########################################################
+# ##########################################################
+# #########                 MAIN                   #########
+# ##########################################################
 
 def main() -> None:
     if len(sys.argv) != 2:
