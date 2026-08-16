@@ -146,7 +146,7 @@ def save_images(
         # print(save_path)
         Image.fromarray(img).save(save_path)
         # print(f"Saved {save_path}")
-
+        
 
 def process_image(file, save, dst=None, only_mask=False):
     original = np.array(Image.open(file))

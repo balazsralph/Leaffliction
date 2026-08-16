@@ -13,3 +13,6 @@ notes.md
 DATAtests/
 test*
 work_data
+model.keras
+class_names.json
+dataset.zip

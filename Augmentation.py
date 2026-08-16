@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import cv2
-from Distribution import count_images, collect_by_plant, PICTURE_EXTENSIONS
+from Distribution import count_images, collect_by_plant, display_error, PICTURE_EXTENSIONS
 
 
 # ###########################################################
@@ -127,13 +127,18 @@ def process_image(file, save, new_path):
         show_images(images)
 
 
-def process_batch(picture_path, dst):
+def process_batch(picture_path, dst, tree=True):
     plants = collect_by_plant(picture_path)
-    print(plants[picture_path.stem])
+    if picture_path.stem not in plants:
+        display_error(
+            f"No plant class found in: {picture_path} "
+            f"(expected subfolders like 'Apple_healthy')"
+        )
     maxi = int(max(plants[picture_path.stem].values()))
 
     for dir in picture_path.iterdir():
-        new_dir = Path(dst) / picture_path.stem / dir.stem
+        if tree : new_dir = Path(dst) / picture_path.stem / dir.stem
+        else : new_dir = Path(dst) / dir.stem
         new_dir.mkdir(parents=True, exist_ok=True)
         count = 0
         content = count_images(dir)
@@ -153,8 +158,7 @@ def process_batch(picture_path, dst):
             count = count + 1
             if count == max_to_augment:
                 break
-        print(count)
-    
+
 
 # ###########################################################
 # #########                 MAIN                    #########

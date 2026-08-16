@@ -4,6 +4,7 @@
 import sys
 from pathlib import Path
 import matplotlib.pyplot as plt
+import colors as c
 
 PICTURE_EXTENSIONS = {
     ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff",
@@ -36,6 +37,8 @@ def collect_by_plant(root: Path) -> dict[str, dict[str, int]]:
 
         # "Apple_healthy" → plant = "Apple"
         file_name = subdir.name.split("_", 1)
+        if len(file_name) < 2:
+            continue
         plant_name = file_name[0]
         class_name = file_name[1]
 
@@ -72,6 +75,11 @@ def plot_plant(plant: str, classes: dict[str, int]) -> None:
     plt.tight_layout()
     plt.show()
 
+def display_error(msg):
+    print(f"{c.RED}{msg}{c.RESET}")
+    sys.exit(1)
+    
+
 
 # ##########################################################
 # #########                 MAIN                   #########
@@ -79,17 +87,16 @@ def plot_plant(plant: str, classes: dict[str, int]) -> None:
 
 def main() -> None:
     if len(sys.argv) != 2:
-        print("Wrong number of arguments")
-        sys.exit(1)
+        display_error("Wrong number of arguments")
 
     root = Path(sys.argv[1])
     if not root.is_dir():
-        print("Not a directory")
+        display_error("Not a directory")
         sys.exit(1)
 
     plants = collect_by_plant(root)
     if not plants:
-        print("No image classes found")
+        display_error("No image class found")
         sys.exit(1)
 
     for plant, classes in plants.items():
