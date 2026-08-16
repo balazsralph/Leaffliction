@@ -143,10 +143,8 @@ def save_images(
             continue
         filename = f"{picture_path.stem}_{title}{picture_path.suffix}"
         save_path = new_path / filename
-        # print(save_path)
         Image.fromarray(img).save(save_path)
-        # print(f"Saved {save_path}")
-        
+
 
 def process_image(file, save, dst=None, only_mask=False):
     original = np.array(Image.open(file))

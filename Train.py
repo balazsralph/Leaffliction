@@ -9,10 +9,17 @@ import shutil
 from Distribution import count_images, PICTURE_EXTENSIONS
 from Augmentation import process_image
 from pathlib import Path
-import tensorflow as tf
 from keras.utils import image_dataset_from_directory
 from keras.models import Sequential
-from keras.layers import Rescaling, Conv2D, MaxPooling2D, Flatten, Dense, Dropout, Input
+from keras.layers import (
+    Rescaling,
+    Conv2D,
+    MaxPooling2D,
+    Flatten,
+    Dense,
+    Dropout,
+    Input
+)
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 import zipfile
 import hashlib
@@ -29,7 +36,7 @@ def sha1_of(path):
 
 def augment_train(train_dir):
     # 1. compter chaque classe
-    counts = { d : count_images(d) for d in train_dir.iterdir() if d.is_dir() }
+    counts = {d: count_images(d) for d in train_dir.iterdir() if d.is_dir()}
     # 2. cible globale = la plus grande classe
     maxi = max(counts.values())
     # 3. pour chaque classe sous la cible
@@ -69,27 +76,35 @@ def split_images(src, dst):
 
 
 def prepare_data():
-    train_ds = image_dataset_from_directory("work_data/train", image_size=(128,128), batch_size=32)
-    val_ds   = image_dataset_from_directory("work_data/val",   image_size=(128,128), batch_size=32)
+    train_ds = image_dataset_from_directory(
+        "work_data/train",
+        image_size=(128, 128),
+        batch_size=32
+    )
+    val_ds = image_dataset_from_directory(
+        "work_data/val",
+        image_size=(128, 128),
+        batch_size=32
+    )
     class_names = train_ds.class_names
     return train_ds, val_ds, class_names
 
 
 def build_model(class_names):
     model = Sequential([
-    Input(shape=(128,128,3)),
-    Rescaling(1./255),
-    Conv2D(32, (3,3), activation='relu'),
-    MaxPooling2D(),
-    Conv2D(64, (3,3), activation='relu'),
-    MaxPooling2D(),
-    Conv2D(128, (3,3), activation='relu'),
-    MaxPooling2D(),
-    Flatten(),
-    Dense(128, activation='relu'),
-    Dropout(0.5),
-    Dense(len(class_names), activation='softmax')
-])
+        Input(shape=(128, 128, 3)),
+        Rescaling(1./255),
+        Conv2D(32, (3, 3), activation='relu'),
+        MaxPooling2D(),
+        Conv2D(64, (3, 3), activation='relu'),
+        MaxPooling2D(),
+        Conv2D(128, (3, 3), activation='relu'),
+        MaxPooling2D(),
+        Flatten(),
+        Dense(128, activation='relu'),
+        Dropout(0.5),
+        Dense(len(class_names), activation='softmax')
+    ])
     model.summary()
     return model
 
@@ -107,18 +122,28 @@ def main():
     with open("class_names.json", "w") as f:
         json.dump(class_names, f, indent=2)
     model = build_model(class_names)
-    model.compile(optimizer='adam',
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
-    early_stop = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+    model.compile(
+        optimizer='adam',
+        loss='sparse_categorical_crossentropy',
+        metrics=['accuracy']
+    )
+    early_stop = EarlyStopping(
+        monitor='val_loss',
+        patience=3,
+        restore_best_weights=True
+    )
     checkpoint = ModelCheckpoint(
         filepath='model.keras',        # où sauvegarder
         monitor='val_loss',            # même métrique de référence
         save_best_only=True            # n'écrit que si ça s'améliore
     )
 
-    model.fit(train_ds, validation_data=val_ds, epochs=50,
-          callbacks=[early_stop, checkpoint])
+    model.fit(
+        train_ds,
+        validation_data=val_ds,
+        epochs=50,
+        callbacks=[early_stop, checkpoint]
+        )
     with zipfile.ZipFile("dataset.zip", "w", zipfile.ZIP_DEFLATED) as zf:
         zf.write("model.keras")
         zf.write("class_names.json")

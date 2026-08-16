@@ -75,10 +75,10 @@ def plot_plant(plant: str, classes: dict[str, int]) -> None:
     plt.tight_layout()
     plt.show()
 
+
 def display_error(msg):
     print(f"{c.RED}{msg}{c.RESET}")
     sys.exit(1)
-    
 
 
 # ##########################################################

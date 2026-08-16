@@ -7,13 +7,20 @@ import matplotlib.pyplot as plt
 import argparse as args
 from Distribution import PICTURE_EXTENSIONS, display_error
 from Transformation import create_mask, apply_mask
-import sys
+
 
 def parse_args():
-    parser = args.ArgumentParser(prog="Predict", description="use a trained model to make predictions")
-    parser.add_argument('image', nargs="?", default=None, help="take an image as parameter and predict if leaf is healthy or kind of discease")
+    parser = args.ArgumentParser(
+        prog="Predict",
+        description="use a trained model to make predictions"
+        )
+    parser.add_argument(
+        'image',
+        nargs="?",
+        default=None)
     parser.add_argument('--model', default="model.keras")
     return parser.parse_args()
+
 
 def display_result(img, label, confidence):
     mask = create_mask(img)
@@ -24,13 +31,43 @@ def display_result(img, label, confidence):
     ]
     set_images(images)
 
-    plt.suptitle("\n====    DL Classification    ====", color="white", fontsize=24)
-
-    plt.figtext(0.5, 0.06, "Prediction : ", color="white", ha="right", fontsize=14)
-    plt.figtext(0.5, 0.06, f"{label}", color="lightgreen", ha="left", fontsize=14)
-
-    plt.figtext(0.5, 0.02, "Confidence : ", color="white", ha="right", fontsize=14)
-    plt.figtext(0.5, 0.02, f"{confidence:.2%}", color="lightgreen", ha="left", fontsize=14)
+    plt.suptitle(
+        "\n====    DL Classification    ====",
+        color="white",
+        fontsize=24
+    )
+    plt.figtext(
+        0.5,
+        0.06,
+        "Prediction : ",
+        color="white",
+        ha="right",
+        fontsize=14
+    )
+    plt.figtext(
+        0.5,
+        0.06,
+        f"{label}",
+        color="lightgreen",
+        ha="left",
+        fontsize=14
+    )
+    plt.figtext(
+        0.5,
+        0.02,
+        "Confidence : ",
+        color="white",
+        ha="right",
+        fontsize=14
+    )
+    plt.figtext(
+        0.5,
+        0.02,
+        f"{confidence:.2%}",
+        color="lightgreen",
+        ha="left",
+        fontsize=14
+    )
 
     plt.tight_layout()
     plt.show()
@@ -60,31 +97,32 @@ def main():
     model_path = Path(parsed.model)
     if not model_path.is_file():
         display_error("Model not found, set a path with --model option")
+
     try:
         model = load_model(model_path)
     except (ValueError, OSError) as e:
         display_error(f"Could not load model: {e}")
+
     with open("class_names.json") as f:
         class_names = json.load(f)
     if parsed.image is None:
         display_error("No image provided")
     path = Path(parsed.image)
-    if path.suffix.lower() not in PICTURE_EXTENSIONS \
-        or not path.is_file():
+    if path.suffix.lower() not in PICTURE_EXTENSIONS or not path.is_file():
         display_error("Not a picture")
 
-    img = load_img(path, target_size=(128, 128))   # même image_size qu'au train
-    arr = img_to_array(img)                          # (128, 128, 3), RGB
-    batch = np.expand_dims(arr, axis=0)              # (1, 128, 128, 3)
+    img = load_img(path, target_size=(128, 128))
+    arr = img_to_array(img)  # (128, 128, 3), RGB
+    batch = np.expand_dims(arr, axis=0)  # (1, 128, 128, 3)
 
-    preds = model.predict(batch)      # (1, 7) : 7 probabilités
-    idx = np.argmax(preds[0])         # indice de la plus forte
-    label = class_names[idx]          # nom de la classe
-    confidence = preds[0][idx]        # sa probabilité
+    preds = model.predict(batch)  # (1, 7) : 7 probabilités
+    idx = np.argmax(preds[0])  # indice de la plus forte
+    label = class_names[idx]  # nom de la classe
+    confidence = preds[0][idx]  # sa probabilité
 
-    img_np = arr.astype(np.uint8)     # numpy uint8 pour plantcv/OpenCV
+    img_np = arr.astype(np.uint8)  # numpy uint8 pour plantcv/OpenCV
     display_result(img_np, label, confidence)
-    
+
 
 if __name__ == "__main__":
     main()

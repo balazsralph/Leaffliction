@@ -5,7 +5,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import cv2
-from Distribution import count_images, collect_by_plant, display_error, PICTURE_EXTENSIONS
+from Distribution import (
+    count_images,
+    collect_by_plant,
+    display_error,
+    PICTURE_EXTENSIONS
+)
 
 
 # ###########################################################
@@ -137,8 +142,10 @@ def process_batch(picture_path, dst, tree=True):
     maxi = int(max(plants[picture_path.stem].values()))
 
     for dir in picture_path.iterdir():
-        if tree : new_dir = Path(dst) / picture_path.stem / dir.stem
-        else : new_dir = Path(dst) / dir.stem
+        if tree:
+            new_dir = Path(dst) / picture_path.stem / dir.stem
+        else:
+            new_dir = Path(dst) / dir.stem
         new_dir.mkdir(parents=True, exist_ok=True)
         count = 0
         content = count_images(dir)
@@ -175,7 +182,7 @@ def main() -> None:
     if picture_path.is_file():
         process_image(picture_path, False, None)
         sys.exit(0)
-    else :
+    else:
         process_batch(picture_path, "augmented_directory")
 
 
