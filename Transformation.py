@@ -152,7 +152,6 @@ def process_image(file, save, dst=None, only_mask=False):
     mask = create_mask(img)
     hist = histogram(img, mask)
     masked = apply_mask(img, mask)
-
     images = [
         ("Original", original),
         ('Gaussian blur', gaussian_blur(mask)),

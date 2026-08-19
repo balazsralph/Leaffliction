@@ -18,13 +18,16 @@ from Distribution import (
 # ###########################################################
 
 
-def rotate_image(image: np.ndarray) -> np.ndarray:
+def rotate_image(image: np.ndarray, save) -> np.ndarray:
     h, w = image.shape[:2]
     center = (w // 2, h // 2)
-    matrix = cv2.getRotationMatrix2D(center, -45, 1)
+    scale = 0.75
+    if save:
+        scale = 1
+    matrix = cv2.getRotationMatrix2D(center, -25, scale)
     return cv2.warpAffine(
         image, matrix, (w, h),
-        borderMode=cv2.BORDER_REFLECT,
+        # borderMode=cv2.BORDER_REFLECT,
         borderValue=(255, 255, 255),
     )
 
@@ -118,7 +121,7 @@ def process_image(file, save, new_path):
     original = np.array(Image.open(file))
     images = [
         ("Original", original),
-        ("Rotate", rotate_image(original)),
+        ("Rotate", rotate_image(original, save)),
         ("Blur", blur_image(original)),
         ("Contrast", contrast_image(original)),
         ("Scaling", scaling_image(original)),

@@ -1,14 +1,26 @@
 # #####################################################################
 # ######################       Train      #############################
 # #####################################################################
+#
+# Part 4 - Classification.
+# Trains ONE CNN per plant directory, as the subject invokes it:
+#     ./Train.py ./DATA/Apple/
+# where the given directory holds the class subfolders directly
+# (Apple/Apple_healthy/<images>, ...): a 2-level dataset.
+#
+# Packaging the final DB (zip + signature.txt over ALL trained plants)
+# is a separate step, on purpose, so the signature covers every model:
+#     make package
 
 
 import json
-import argparse as args
+import random
 import shutil
-from Distribution import count_images, PICTURE_EXTENSIONS
-from Augmentation import process_image
+import argparse
 from pathlib import Path
+
+from Distribution import count_images, display_error, PICTURE_EXTENSIONS
+from Augmentation import process_image
 from keras.utils import image_dataset_from_directory
 from keras.models import Sequential
 from keras.layers import (
@@ -21,73 +33,90 @@ from keras.layers import (
     Input
 )
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-import zipfile
-import hashlib
-from Distribution import display_error
 
 
-def sha1_of(path):
-    h = hashlib.sha1()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            h.update(chunk)
-    return h.hexdigest()
+WORK_DIR = Path("work_directory")
+IMG_SIZE = (128, 128)
+BATCH_SIZE = 32
+VAL_RATIO = 0.2
+SEED = 42
+# process_image writes 6 augmentations per original (Rotate/Blur/Contrast/
+# Scaling/Illumination/Projective), so one original ~= 6 new images.
+AUG_PER_IMAGE = 6
 
 
-def augment_train(train_dir):
-    # 1. compter chaque classe
-    counts = {d: count_images(d) for d in train_dir.iterdir() if d.is_dir()}
-    # 2. cible globale = la plus grande classe
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="Train",
+        description="Train a CNN on one plant directory "
+                    "(e.g. ./Train.py ./DATA/Apple/)",
+    )
+    parser.add_argument(
+        "src",
+        help="plant directory containing class subfolders",
+    )
+    return parser.parse_args()
+
+
+def list_images(directory):
+    return [
+        f for f in directory.iterdir()
+        if f.is_file() and f.suffix.lower() in PICTURE_EXTENSIONS
+    ]
+
+
+def split_images(src, train_root, val_root):
+    """2-level dataset src/<class>/<images>: split each class into train/val.
+
+    The split is shuffled with a fixed seed (reproducible, unbiased) and the
+    val ratio is applied to the actual image list, not a separate count.
+    """
+    rng = random.Random(SEED)
+    for class_dir in sorted(src.iterdir()):
+        if not class_dir.is_dir():
+            continue
+        files = list_images(class_dir)
+        if not files:
+            continue
+        rng.shuffle(files)
+        k = int(len(files) * VAL_RATIO)
+        train_dst = train_root / class_dir.name
+        val_dst = val_root / class_dir.name
+        train_dst.mkdir(parents=True, exist_ok=True)
+        val_dst.mkdir(parents=True, exist_ok=True)
+        for f in files[:k]:
+            shutil.copy(f, val_dst / f.name)
+        for f in files[k:]:
+            shutil.copy(f, train_dst / f.name)
+
+
+def augment_train(train_root):
+    """Balance the TRAIN classes up to the largest one (val untouched)."""
+    counts = {d: count_images(d) for d in train_root.iterdir() if d.is_dir()}
+    if not counts:
+        display_error(f"No class found to augment in: {train_root}")
     maxi = max(counts.values())
-    # 3. pour chaque classe sous la cible
     for class_dir, content in counts.items():
         if content >= maxi:
             continue
-        needed = int((maxi - content) / 6)
-        # 4. figer la liste des ORIGINAUX avant d'écrire
-        originals = [f for f in class_dir.iterdir()
-                     if f.is_file() and f.suffix.lower() in PICTURE_EXTENSIONS]
-        # 5. augmenter les `needed` premiers, EN PLACE
+        needed = (maxi - content) // AUG_PER_IMAGE
+        originals = list_images(class_dir)
         for f in originals[:needed]:
             process_image(f, True, class_dir)
 
 
-def argparse():
-    parser = args.ArgumentParser(prog="Train", description="Train a model")
-    parser.add_argument("-src", required=True)
-    parser.add_argument("-dst", required=True)
-    return parser.parse_args()
-
-
-def split_images(src, dst):
-    for tree in src.iterdir():
-        for type in tree.iterdir():
-            train_dst = dst / "train" / type.name
-            val_dst = dst / "val" / type.name
-            Path.mkdir(train_dst, exist_ok=True,  parents=True)
-            Path.mkdir(val_dst, exist_ok=True,  parents=True)
-            k = int(count_images(type) * 0.2)
-            files = [f for f in type.iterdir() if f.is_file()
-                     and f.suffix.lower() in PICTURE_EXTENSIONS]
-            for f in files[:k]:
-                shutil.copy(f, val_dst / f.name)
-            for f in files[k:]:
-                shutil.copy(f, train_dst / f.name)
-
-
-def prepare_data():
+def prepare_data(train_root, val_root):
     train_ds = image_dataset_from_directory(
-        "work_data/train",
-        image_size=(128, 128),
-        batch_size=32
+        train_root,
+        image_size=IMG_SIZE,
+        batch_size=BATCH_SIZE,
     )
     val_ds = image_dataset_from_directory(
-        "work_data/val",
-        image_size=(128, 128),
-        batch_size=32
+        val_root,
+        image_size=IMG_SIZE,
+        batch_size=BATCH_SIZE,
     )
-    class_names = train_ds.class_names
-    return train_ds, val_ds, class_names
+    return train_ds, val_ds, train_ds.class_names
 
 
 def build_model(class_names):
@@ -110,17 +139,30 @@ def build_model(class_names):
 
 
 def main():
-    parsed = argparse()
+    parsed = parse_args()
     src = Path(parsed.src)
     if not src.is_dir():
         display_error(f"Not a directory: {parsed.src}")
-    dst = Path(parsed.dst)
-    split_images(src, dst)
-    train_path = dst / "train"
-    augment_train(train_path)
-    train_ds, val_ds, class_names = prepare_data()
-    with open("class_names.json", "w") as f:
+
+    plant = src.name
+    plant_work = WORK_DIR / plant
+    train_root = plant_work / "train"
+    val_root = plant_work / "val"
+
+    # Fresh split for this plant so re-running doesn't stack copies/augments.
+    if plant_work.exists():
+        shutil.rmtree(plant_work)
+
+    split_images(src, train_root, val_root)
+    augment_train(train_root)
+
+    train_ds, val_ds, class_names = prepare_data(train_root, val_root)
+
+    model_path = Path(f"model_{plant}.keras")
+    classes_path = Path(f"class_names_{plant}.json")
+    with open(classes_path, "w") as f:
         json.dump(class_names, f, indent=2)
+
     model = build_model(class_names)
     model.compile(
         optimizer='adam',
@@ -133,7 +175,7 @@ def main():
         restore_best_weights=True
     )
     checkpoint = ModelCheckpoint(
-        filepath='model.keras',        # où sauvegarder
+        filepath=str(model_path),      # où sauvegarder
         monitor='val_loss',            # même métrique de référence
         save_best_only=True            # n'écrit que si ça s'améliore
     )
@@ -143,15 +185,11 @@ def main():
         validation_data=val_ds,
         epochs=50,
         callbacks=[early_stop, checkpoint]
-        )
-    with zipfile.ZipFile("dataset.zip", "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.write("model.keras")
-        zf.write("class_names.json")
-        for f in Path("work_data").rglob("*"):
-            if f.is_file():
-                zf.write(f)
-    signature = sha1_of("dataset.zip")
-    Path("signature.txt").write_text(signature + "\n")
+    )
+
+    print(f"Model saved   : {model_path}")
+    print(f"Classes saved : {classes_path}")
+    print("When every plant is trained, build the DB: make package")
 
 
 if __name__ == "__main__":
