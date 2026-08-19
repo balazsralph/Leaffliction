@@ -17,3 +17,8 @@ model.keras
 class_names.json
 dataset.zip
 .vscode/
+work_directory/
+model_Apple.keras
+model_Grape.keras
+.venv/
+signature.txt

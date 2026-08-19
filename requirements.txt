@@ -8,6 +8,7 @@ Pillow
 
 # Transformations feuilles (Part 3)
 plantcv
+scikit-image>=0.21
 
 # Classification (Part 4)
 scikit-learn
